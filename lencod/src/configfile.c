@@ -81,7 +81,7 @@ static const int mb_width_cr[4] = {0,8, 8,16};
 static const int mb_height_cr[4]= {0,8,16,16};
 
 #define MAX_ITEMS_TO_PARSE  10000
-
+extern unsigned int QPtest;
 
 /*!
  ***********************************************************************
@@ -307,7 +307,32 @@ void Configure (ImageParameters *p_Img, InputParameters *p_Inp, int ac, char *av
   content = GetConfigFileContent (filename);
   if (NULL==content)
     error (errortext, 300);
-  ParseContent (p_Inp, Map, content, strlen(content));
+  ParseContent (p_Inp, Map, content, strlen(content)); 
+  
+  switch(Qptest){ 
+
+        case 0: p_Inp->qp[0][0]=40;
+				p_Inp->qp[0][2]=40;
+				 break; 
+        case 1: 
+                p_Inp->qp[0][0]=36;
+				p_Inp->qp[0][2]=36;
+            break; 
+        case 2: 
+                p_Inp->qp[0][0]=32;
+				p_Inp->qp[0][2]=32;
+            break; 
+        case 3: 
+                p_Inp->qp[0][0]=28;
+				p_Inp->qp[0][2]=28;
+            break; 
+        case 4: 
+                p_Inp->qp[0][0]=24;
+				p_Inp->qp[0][2]=24; 
+            break; 
+       
+    } 
+
   printf ("\n");
   free (content);
 
@@ -390,6 +415,7 @@ void Configure (ImageParameters *p_Img, InputParameters *p_Inp, int ac, char *av
 
   if (p_Inp->DisplayEncParams)
     DisplayEncoderParams(Map);
+
 }
 
 /*!

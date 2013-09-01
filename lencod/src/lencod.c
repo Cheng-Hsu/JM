@@ -84,7 +84,7 @@ static const int mb_width_cr[4] = {0,8, 8,16};
 static const int mb_height_cr[4]= {0,8,16,16};
 
 EncoderParams   *p_Enc = NULL;
-
+unsigned int Qptest;
 static void SetLevelIndices(ImageParameters *p_Img);
 static void chroma_mc_setup(ImageParameters *p_Img);
 
@@ -293,8 +293,9 @@ static void free_encoder (EncoderParams *p_Enc)
  ***********************************************************************
  */
 int main(int argc, char **argv)
-{
-  
+{ 
+  for (Qptest=0;Qptest<5;Qptest++){
+
   alloc_encoder(&p_Enc);
 
   Configure (p_Enc->p_Img, p_Enc->p_Inp, argc, argv);
@@ -310,8 +311,9 @@ int main(int argc, char **argv)
 
   free_params (p_Enc->p_Inp);  
   free_encoder(p_Enc);
-
+  }
   return 0;
+	
 }
 
 

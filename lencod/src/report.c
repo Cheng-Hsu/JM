@@ -243,13 +243,14 @@ void report_stats(ImageParameters *p_Img, InputParameters *p_Inp, StatParameters
 {
   DistortionParams *p_Dist = p_Img->p_Dist;
   FILE *p_stat;                    //!< status file for the last encoding session
+  FILE *mystat; 
   double mean_motion_info_bit_use[NUM_SLICE_TYPES] = {0.0};
   int i;
 
   if (strlen(p_Inp->StatsFile) == 0)
     strcpy (p_Inp->StatsFile,"stats.dat");
 
-  if ((p_stat = fopen(p_Inp->StatsFile, "wt")) == 0)
+  if ((p_stat = fopen(p_Inp->StatsFile, "a")) == 0)
   {
     snprintf(errortext, ET_SIZE, "Error open file %s", p_Inp->StatsFile);
     error(errortext, 500);
@@ -330,12 +331,12 @@ void report_stats(ImageParameters *p_Img, InputParameters *p_Inp, StatParameters
   fprintf(p_stat,"\n ---------------------|----------------|---------------|");
   fprintf(p_stat,"\n     Item             |     Intra      |   All frames  |");
   fprintf(p_stat,"\n ---------------------|----------------|---------------|");
-  fprintf(p_stat,"\n SNR Y(dB)            |");
-  fprintf(p_stat," %5.2f          |", p_Dist->metric[PSNR].avslice[I_SLICE][0]);
-  fprintf(p_stat," %5.2f         |", p_Dist->metric[PSNR].average[0]);
+  fprintf(p_stat,"\n PSNR Y(dB)            |");
+  fprintf(p_stat," %5.3f          |", p_Dist->metric[PSNR].avslice[I_SLICE][0]);
+  fprintf(p_stat," %5.3f         |", p_Dist->metric[PSNR].average[0]);
   fprintf(p_stat,"\n SNR U/V (dB)         |");
-  fprintf(p_stat," %5.2f/%5.2f    |", p_Dist->metric[PSNR].avslice[I_SLICE][1], p_Dist->metric[PSNR].avslice[I_SLICE][2]);
-  fprintf(p_stat," %5.2f/%5.2f   |", p_Dist->metric[PSNR].average[1], p_Dist->metric[PSNR].average[2]);
+  fprintf(p_stat," %5.3f/%5.3f    |", p_Dist->metric[PSNR].avslice[I_SLICE][1], p_Dist->metric[PSNR].avslice[I_SLICE][2]);
+  fprintf(p_stat," %5.3f/%5.3f   |", p_Dist->metric[PSNR].average[1], p_Dist->metric[PSNR].average[2]);
   fprintf(p_stat,"\n ---------------------|----------------|---------------|");
   fprintf(p_stat,"\n");
 
@@ -881,6 +882,7 @@ void information_init ( ImageParameters *p_Img, InputParameters *p_Inp, StatPara
   }
 
   fprintf(stdout,  " Input YUV file                    : %s \n", p_Inp->input_file1.fname);
+  
 
   fprintf(stdout,  " Output H.264 bitstream            : %s \n", p_Inp->outfile);
   if (p_Img->p_dec != -1)

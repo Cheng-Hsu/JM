@@ -17,7 +17,7 @@
 
 #define PROFILE_IDC     88
 #define LEVEL_IDC       21
-
+unsigned int Qptest;
 
 typedef struct {
   char *TokenName;
