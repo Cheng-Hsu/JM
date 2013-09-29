@@ -50,12 +50,13 @@ void encode_one_macroblock_high (Macroblock *currMB)
   int         min_cost = INT_MAX;
   int         intra1 = 0;
   int         mb_available[3];
-
+  RD_DATA *rdopt = currSlice->rddata;
+  
   short       bslice      = (short) (currSlice->slice_type == B_SLICE);
   short       pslice      = (short) ((currSlice->slice_type == P_SLICE) || (currSlice->slice_type == SP_SLICE));
   short       intra       = (short) ((currSlice->slice_type == I_SLICE) || (pslice && currMB->mb_y == p_Img->mb_y_upd && p_Img->mb_y_upd != p_Img->mb_y_intra));
   int         lambda_mf[3];
- 
+  int dd=0;
   imgpel    **mb_pred  = currSlice->mb_pred[0];
   Block8x8Info *b8x8info = p_Img->b8x8info;
 
@@ -63,13 +64,33 @@ void encode_one_macroblock_high (Macroblock *currMB)
   short       inter_skip = 0;
   BestMode    md_best;
   Info8x8     best;
-  //printf ("currMBNum=%d\n",currMB->mbAddrX);
-    currMB->Tlow_flag =0;
+  int mbAddrX=currMB->mbAddrX;
+  int as;
+  int flag=1;
+  int flag2=1;
+
+	currMB->Tlow_flag =0;
 	currMB->Thigh_flag =0;
 	currMB->mode1_flag = 0;
 	currMB->mode2_flag = 0;
 	currMB->mode3_flag = 0;
 	currMB->mode4_flag = 0;
+    currMB->SKIP_Count=0;
+	
+	as = currSlice->picture_id;
+	//if((as-1)==14){system("pause");}
+	//printf ("picture_idNum=%d\n",currSlice->picture_id);
+ //printf ("currMBNum=====================%d\n",currMB->mbAddrX);
+  /*printf ("ref_mv(%d,%d)\n",currSlice->all_mymv[mbAddrX-1][2][0][0],currSlice->all_mymv[mbAddrX-1][2][0][1]);
+   printf ("ref_mv(%d,%d)\n",currSlice->all_mymv[mbAddrX-1][2][1][0],currSlice->all_mymv[mbAddrX-1][2][1][1]);
+    printf ("ref_mv(%d,%d)\n",currSlice->all_mymv[mbAddrX-1][3][0][0],currSlice->all_mymv[mbAddrX-1][3][0][1]);
+	 printf ("ref_mv(%d,%d)\n",currSlice->all_mymv[mbAddrX-1][3][1][0],currSlice->all_mymv[mbAddrX-1][3][1][1]);
+    currMB->Tlow_flag =0;
+	currMB->Thigh_flag =0;
+	currMB->mode1_flag = 0;
+	currMB->mode2_flag = 0;
+	currMB->mode3_flag = 0;
+	currMB->mode4_flag = 0;*/
   //printf ("currMBQP=%d\n",currMB->qp);
 	
  // system("pause");
@@ -100,7 +121,9 @@ void encode_one_macroblock_high (Macroblock *currMB)
   currSlice->store_coding_state (currMB, currSlice->p_RDO->cs_cm);
 
   if (!intra)
-  {
+  { 
+	
+	  
     //===== set skip/direct motion vectors =====
     if (enc_mb.valid[0])
     {
@@ -113,10 +136,33 @@ void encode_one_macroblock_high (Macroblock *currMB)
     {
       get_initial_mb16x16_cost(currMB);
     }
-
+  
+	  if(currMB->mbAddrX!=0){
+	 
+		 compute_mode_RD_cost(currMB, &enc_mb, 0, &inter_skip);
+		 // printf ("currMB->min_rdcost=%d\n",currMB->min_rdcost);
+		}
     //===== MOTION ESTIMATION FOR 16x16, 16x8, 8x16 BLOCKS =====
     for (mode = 1; mode < 4; mode++)
     {
+		if(currMB->Tlow_flag == 1)
+		{
+			currMB->SKIP_Count=1;
+		
+			break;}
+	  if(currMB->Thigh_flag == 1)break;
+	  else{
+		
+		
+	    if(currMB->mode1_flag && mode==2) break;
+		else if(currMB->mode2_flag && currMB->mode3_flag && mode==3) break;
+		else if(currMB->mode2_flag && currMB->mode3_flag && flag2)mode=2;
+		
+		
+		
+	  }
+	  flag2=0;
+	
       best.mode = (char) mode;
       best.bipred = 0;
       b8x8info->best[mode][0].bipred = 0;
@@ -192,9 +238,11 @@ void encode_one_macroblock_high (Macroblock *currMB)
         }
       } // if (enc_mb.valid[mode])
     } // for (mode=1; mode<4; mode++)
-
-    if (enc_mb.valid[P8x8])
-    {      
+    
+    
+      if(enc_mb.valid[P8x8] || currMB->mode4_flag)
+		{  
+		
       currMB->valid_8x8 = FALSE;
 
       if (p_Inp->Transform8x8Mode)
@@ -235,6 +283,7 @@ void encode_one_macroblock_high (Macroblock *currMB)
 
       p_Img->giRDOpt_B8OnlyFlag = FALSE;
     }
+	
   }
   else // if (!intra)
   {
@@ -295,22 +344,27 @@ void encode_one_macroblock_high (Macroblock *currMB)
         }
 
         compute_mode_RD_cost(currMB, &enc_mb, (short) mode, &inter_skip);
-        if(currMB->Tlow_flag) break;
-		else if(currMB->Thigh_flag  && index==6) break;
-		else if(currMB->Thigh_flag) index=4;
-		else if(currMB->mode1_flag && index==1) break;
-		else if(currMB->mode2_flag && currMB->mode3_flag)index=1;
-		else if(currMB->mode2_flag && currMB->mode3_flag && index==3) break;
-		else if(currMB->mode4_flag && index==4) break;
-		else if(currMB->mode4_flag) index=3;
+		
+	  
 		//currMB->Tlow_flag  =0;
-		//currMB->Thigh_flag = 0;
+	//	currMB->Thigh_flag = 0;
 		//currMB->mode1_flag = 0;
-		//currMB->mode2_flag = 0;
+	//	currMB->mode2_flag = 0;
 		//currMB->mode3_flag = 0;
-		//currMB->mode4_flag = 0;
+	//	currMB->mode4_flag = 0;
 		
       }
+	  if(currMB->mbAddrX!=0){
+       if(currMB->Tlow_flag) break;
+		else if(currMB->Thigh_flag  && index==6) break;
+		else if(currMB->Thigh_flag && flag) index=4;
+		else if(currMB->mode1_flag && index==1) break;
+		else if(currMB->mode2_flag && currMB->mode3_flag && index==3) break;
+		else if(currMB->mode2_flag && currMB->mode3_flag && flag)index=1;
+		else if(currMB->mode4_flag && index==4) break;
+		else if(currMB->mode4_flag) index=3;
+		}
+		flag=0;
     }// for (index=0; index<max_index; index++)
   }// for (currMB->c_ipred_mode=DC_PRED_8; currMB->c_ipred_mode<=chroma_pred_mode_range[1]; currMB->c_ipred_mode++)                     
 
@@ -327,6 +381,9 @@ void encode_one_macroblock_high (Macroblock *currMB)
   if(p_Inp->RCEnable && p_Inp->RCUpdateMode <= MAX_RC_MODE)
     rc_store_mad(currMB);
 
+		
+	//	printf("all_mv=%d , %d==================",rdo_mv[currMB->block_y],currSlice->all_mv[1][mode8]);
+	
 
   //===== Decide if this MB will restrict the reference frames =====
   if (p_Inp->RestrictRef)

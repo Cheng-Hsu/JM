@@ -1489,12 +1489,7 @@ int RDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to 
   imgpel     **mb_pred = currSlice->mb_pred[0];
   imgpel     ***curr_mpr_16x16 = currSlice->mpr_16x16[0];
   
-    currMB->Tlow_flag =0;
-	currMB->Thigh_flag =0;
-	currMB->mode1_flag = 0;
-	currMB->mode2_flag = 0;
-	currMB->mode3_flag = 0;
-	currMB->mode4_flag = 0;
+ // printf ("currMBNum=====================%d\n",currMB->mbAddrX);  
   
   // Test MV limits for Skip Mode. This could be necessary for MBAFF case Frame MBs.
   if ((currSlice->MbaffFrameFlag) && (!currMB->mb_field) && (currSlice->slice_type == P_SLICE) && (mode==0) )
@@ -1683,18 +1678,27 @@ int RDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to 
     rdcost = (double)distortion + lambda * (rate +  IS_INTRA(currMB));
   else
     rdcost = (double)distortion + lambda * dmax(0.5,(double)rate);
-
-	if(mode==0){
-	if(rdcost<Tlow){currMB->Tlow_flag =1;}
-	else if(rdcost>Thigh){currMB->Thigh_flag =1;}
-	else{
-		if(currMB->L <=1){currMB->mode1_flag =1;}
-		else if(currMB->L >2){currMB->mode4_flag =1;}
-		 else{currMB->mode2_flag =1;currMB->mode3_flag =1;}
-		}
 	
+		//printf ("mode=%d---rdcost=%d\n",mode,rdcost);
+	if(currMB->mbAddrX==0){}
+	else
+	{
+		if(mode==0)
+		{
+			if(rdcost < Tlow) currMB->Tlow_flag =1;
+			else if(rdcost > Thigh) currMB->Thigh_flag =1;
+			else
+			{
+				if((currMB->L) <=1) currMB->mode1_flag =1;
+				else if((currMB->L) >2)currMB->mode4_flag =1;
+				else
+				{
+				currMB->mode2_flag =1;currMB->mode3_flag =1;
+				}
+			}
+	
+		}
 	}
-
   if (rdcost >= currMB->min_rdcost ||
     ((currMB->qp_scaled[0]) == 0 && p_Img->lossless_qpprime_flag == 1 && distortion != 0))
   {

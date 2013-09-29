@@ -160,18 +160,23 @@ void SetMotionVectorsMBPSlice (Macroblock* currMB, PicMotionParams *motion)
     mode8 = currMB->b8x8[0].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y    ][currMB->block_x    ];     
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x    , 0, 2, 0);
-    
+    	 
+	
     mode8 = currMB->b8x8[1].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y    ][currMB->block_x + 2];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x + 2, 0, 2, 2);
     
+	
     mode8 = currMB->b8x8[2].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y + 2][currMB->block_x    ];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x, 2, 4, 0);
-
+	  
+	
     mode8 = currMB->b8x8[3].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y + 2][currMB->block_x + 2];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x + 2, 2, 4, 2);
+	  
+	
   }
   else // Intra modes
   {

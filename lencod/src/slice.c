@@ -423,6 +423,7 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
   int NumberOfCodedMBs = 0;
   Macroblock* currMB   = NULL;
   int CurrentMbAddr;
+  int SKIP=0;
   StatParameters *cur_stats = &p_Img->enc_picture->stats;
   Slice *currSlice = NULL;
 
@@ -493,12 +494,15 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
     {
       p_Img->masterQP = p_Img->qp;
 
-      currSlice->encode_one_macroblock (currMB);
+       currSlice->encode_one_macroblock (currMB);
+	   if(currMB->SKIP_Count)p_Img->SKIP_mode[currSlice->frame_num]++;
+	 // printf ("currMB->SKIP_Count= %d\n",currSlice->SKIP_mode[currSlice->frame_num]);
       end_encode_one_macroblock(currMB);
       write_macroblock (currMB, 1, prev_recode_mb);    
     }
+    
 
-    end_macroblock (currMB, &end_of_slice, &recode_macroblock);
+	end_macroblock (currMB, &end_of_slice, &recode_macroblock);
     prev_recode_mb = recode_macroblock;
     //       printf ("encode_one_slice: mb %d,  slice %d,   bitbuf bytepos %d EOS %d\n",
     //       p_Img->current_mb_nr, p_Img->current_slice_nr,

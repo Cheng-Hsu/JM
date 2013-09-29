@@ -76,7 +76,7 @@ void end_encode_one_macroblock(Macroblock *currMB)
   Slice *currSlice = currMB->p_slice;
   ImageParameters *p_Img = currMB->p_Img;
   InputParameters *p_Inp = currMB->p_Inp;
-
+   
   int bslice = (currSlice->slice_type == B_SLICE);
 
   update_qp_cbp(currMB);

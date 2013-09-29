@@ -899,10 +899,13 @@ BlockMotionSearch (Macroblock *currMB,      //!< Current Macroblock
 	  //printf("BlockMotionSearch\n");
     currMB->GetMVPredictor (currMB, mv_block->block, pred_mv, ref, motion->ref_idx[list], motion->mv[list], mb_x, mb_y, bsx, bsy);
   }
-
+  //system("pause");
   pred.mv_x = pred_mv[0];
   pred.mv_y = pred_mv[1];
-
+ /* if(currMB->mbAddrX==7){
+  printf("mb_x=%d,mb_y=%d\n",mb_x,mb_y);
+  printf("pred_mv[0]=%d,pred_mv[1]=%d\n",pred_mv[0],pred_mv[1]);
+  system("pause");}*/
   //==================================
   //=====   INTEGER-PEL SEARCH   =====
   //==================================
@@ -915,6 +918,7 @@ BlockMotionSearch (Macroblock *currMB,      //!< Current Macroblock
 #if (JM_INT_DIVIDE)
     mv->mv_x = (short) (((pred.mv_x  + 2) >> 2) * 4);
     mv->mv_y = (short) (((pred.mv_y  + 2) >> 2) * 4);
+	 
 #else
     mv->mv_x = (short) ((pred.mv_x / 4) * 4);
     mv->mv_y = (short) ((pred.mv_y / 4) * 4);
@@ -953,7 +957,10 @@ BlockMotionSearch (Macroblock *currMB,      //!< Current Macroblock
       min_mcost =  currMB->SubPelME (currMB, &pred, mv_block, min_mcost, lambda_factor);
     }
   }
-
+  //if(currMB->mbAddrX==7){
+  
+  //printf("mv->mv_x=%d,mv->mv_y=%d\n",mv->mv_x,mv->mv_y);
+  //system("pause");}
   // clip mvs after me is performed (is not exactly the best)
   // better solution is to modify search window appropriately
   clip_mv_range(p_Img, 0, mv, Q_PEL);
@@ -987,7 +994,12 @@ BlockMotionSearch (Macroblock *currMB,      //!< Current Macroblock
   {
     all_mv[0][i][0] = mv->mv_x;
     all_mv[0][i][1] = mv->mv_y;
-	  
+	  	  	if(currMB->mbAddrX==7 ){
+	   
+		//printf("all_mv[0][%d][0]=%d ,all_mv[0][%d][1]=%d\n",i,all_mv[0][i][0],i,all_mv[0][i][1]);
+	//	printf("all_mv=%d , %d==================",rdo_mv[currMB->block_y],currSlice->all_mv[1][mode8]);
+	//	system("pause");
+	}  
   }
 
   // set all other lines
@@ -1594,7 +1606,11 @@ void PartitionMotionSearch (Macroblock *currMB,
           get_search_range(&mv_block, p_Inp, ref, blocktype);
 
           //===== LOOP OVER MACROBLOCK partitions        
-          *m_cost = BlockMotionSearch (currMB, &mv_block, bx<<2, by<<2, lambda_factor);             
+          *m_cost = BlockMotionSearch (currMB, &mv_block, bx<<2, by<<2, lambda_factor);  
+		//  if(currMB->mbAddrX==7){
+			// printf("*m_cost=%d\n",*m_cost);
+			 //system("pause");
+		//  }
           //--- set motion vectors and reference frame ---
           set_me_parameters(ref_array, mv_array, currSlice->all_mv[list][ref][blocktype][by][bx], ref, step_h, step_v, pic_block_x);        
         }
@@ -1646,6 +1662,7 @@ void SubPartitionMotionSearch (Macroblock *currMB,
   int   *m_cost;
   short by = by0[parttype][block8x8];
   short bx = bx0[parttype][block8x8];
+  int mbAddrX = currMB->mbAddrX;
   MEBlock  mv_block;
 
 #if GET_METIME
@@ -1744,9 +1761,11 @@ void SubPartitionMotionSearch (Macroblock *currMB,
               get_search_range(&mv_block, p_Inp, ref, blocktype);
 			  //printf(" SubPartitionMotionSearch\n");
               mcost = BlockMotionSearch (currMB, &mv_block, h<<2, v<<2, lambda_factor);
-
+             
               *m_cost += mcost;
-
+             // if(currMB->mbAddrX==7){
+			//printf("*m_cost=%d\n",*m_cost);
+			// system("pause");}
             }
 
             //--- set motion vectors and reference frame (for motion vector prediction) ---
@@ -1759,8 +1778,40 @@ void SubPartitionMotionSearch (Macroblock *currMB,
           currSlice->tmp_mv8[list][ref][by][bx].mv_x = currSlice->all_mv[list][ref][blocktype][by][bx][0];
           currSlice->tmp_mv8[list][ref][by][bx].mv_y = currSlice->all_mv[list][ref][blocktype][by][bx][1];
           currSlice->motion_cost8[list][ref][block8x8] = *m_cost;
+	 
         }
+	   	//printf("currSlice->all_mv[list][ref][blocktype][by][bx][0]=%d\n",currSlice->all_mv[list][ref][blocktype][by][bx][0]);
+		//printf("currSlice->all_mv[list][ref][blocktype][by][bx][1]=%d\n",currSlice->all_mv[list][ref][blocktype][by][bx][1]);
+		 if(blocktype==7){
+		currSlice->all_mymv[mbAddrX][by][bx][0] = currSlice->all_mv[list][ref][blocktype][by][bx][0];
+		currSlice->all_mymv[mbAddrX][by][bx][1] = currSlice->all_mv[list][ref][blocktype][by][bx][1];
+	//	printf("currSlice->all_mymv[mbAddrX][by][bx][0]=%d\n",currSlice->all_mymv[mbAddrX][by][bx][0]);
+	//	printf("currSlice->all_mymv[mbAddrX][by][bx][1]=%d\n",currSlice->all_mymv[mbAddrX][by][bx][1]);
+		currSlice->all_mymv[mbAddrX][by][bx+1][0] = currSlice->all_mv[list][ref][blocktype][by][bx+1][0];
+		currSlice->all_mymv[mbAddrX][by][bx+1][1] = currSlice->all_mv[list][ref][blocktype][by][bx+1][1];
+		currSlice->all_mymv[mbAddrX][by+1][bx][0] = currSlice->all_mv[list][ref][blocktype][by+1][bx][0];
+		currSlice->all_mymv[mbAddrX][by+1][bx][1] = currSlice->all_mv[list][ref][blocktype][by+1][bx][1];
+		currSlice->all_mymv[mbAddrX][by+1][bx+1][0] = currSlice->all_mv[list][ref][blocktype][by+1][bx+1][0];
+		currSlice->all_mymv[mbAddrX][by+1][bx+1][1] = currSlice->all_mv[list][ref][blocktype][by+1][bx+1][1];
+	//	printf("currSlice->all_mymv[mbAddrX][by+1][bx+1][0]=%d\n",currSlice->all_mymv[mbAddrX][by+1][bx+1][0]);
+	//	printf("currSlice->all_mymv[mbAddrX][by+1][bx+1][1]=%d\n",currSlice->all_mymv[mbAddrX][by+1][bx+1][1]);
+		/*if(currMB->mbAddrX==8){
+		printf("currSlice->all_mv[list][ref][blocktype][by][bx][0]=%d\n",currSlice->all_mv[list][ref][blocktype][by][bx][0]);
+		printf("currSlice->all_mv[list][ref][blocktype][by][bx][1]=%d\n",currSlice->all_mv[list][ref][blocktype][by][bx][1]);
+		printf("currSlice->all_mv[list][ref][blocktype][by][bx+1][0]=%d\n",currSlice->all_mv[list][ref][blocktype][by][bx+1][0]);
+		printf("currSlice->all_mv[list][ref][blocktype][by][bx+1][1]=%d\n",currSlice->all_mv[list][ref][blocktype][by][bx+1][1]);
+		printf("currSlice->all_mv[list][ref][blocktype][by+1][bx][0]=%d\n",currSlice->all_mv[list][ref][blocktype][by+1][bx][0]);
+		printf("currSlice->all_mv[list][ref][blocktype][by+1][bx][1]=%d\n",currSlice->all_mv[list][ref][blocktype][by+1][bx][1]);
+		printf("currSlice->all_mv[list][ref][blocktype][by+1][bx+1][0]=%d\n",currSlice->all_mv[list][ref][blocktype][by+1][bx+1][0]);
+		printf("currSlice->all_mv[list][ref][blocktype][by+1][bx+1][1]=%d\n",currSlice->all_mv[list][ref][blocktype][by+1][bx+1][1]);
+		system("pause");
+		}
+*/
+		
+		  }
+		
       }
+	  		  
     }
 
     free_mv_block(p_Inp, &mv_block);

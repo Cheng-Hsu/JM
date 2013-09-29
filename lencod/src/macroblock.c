@@ -2604,6 +2604,7 @@ void write_macroblock (Macroblock* currMB, int eos_bit, Boolean prev_recode_mb)
   BitCounter *mbBits = &currMB->bits;
   int i;
 
+
   // enable writing of trace file
 #if TRACE
   if ( prev_recode_mb == FALSE )

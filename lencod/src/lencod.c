@@ -294,7 +294,7 @@ static void free_encoder (EncoderParams *p_Enc)
  */
 int main(int argc, char **argv)
 { 
-  for (Qptest=0;Qptest<5;Qptest++){
+ // for (Qptest=0;Qptest<5;Qptest++){
 
   alloc_encoder(&p_Enc);
 
@@ -311,7 +311,7 @@ int main(int argc, char **argv)
 
   free_params (p_Enc->p_Inp);  
   free_encoder(p_Enc);
-  }
+// }
   return 0;
 	
 }

@@ -360,6 +360,7 @@ struct macroblock
   int				  mode6_flag;
   int				  mode7_flag;
   int				  mode8_flag;
+  int				  SKIP_Count;
   int				  pmva;
   int				  pmvb;
   int				  pmvc;
@@ -540,7 +541,7 @@ typedef struct slice
   int                 nal_reference_idc;                       //!< nal_reference_idc from NAL unit
   short               bitdepth_luma;
   short               bitdepth_chroma;
-
+  int				  SKIP_mode[396];
 
   DataPartition       *partArr;     //!< array of partitions
   MotionInfoContexts  *mot_ctx;     //!< pointer to struct of context models for use in CABAC
@@ -565,6 +566,7 @@ typedef struct slice
   // Motion vectors for a macroblock
   // These need to be changed to MotionVector parameters
   short ******all_mv;         //!< replaces local all_mv
+  short all_mymv[400][4][4][2];
   short *******bipred_mv;     //!< Biprediction MVs  
   //Weighted prediction
   short ***wp_weight;         // weight in [list][index][component] order
@@ -605,6 +607,7 @@ typedef struct slice
   char    **direct_pdir;               //!< direct mode direction buffer
 
   MotionVector ****tmp_mv8;
+
   int      ***motion_cost8;
   int     deltaQPTable[9]; 
 
@@ -1066,6 +1069,7 @@ typedef struct img_par
   int lastINTRA;
   int last_ref_idc;
   int idr_refresh;
+  int SKIP_mode[396];
 
   int p_dec;                      //!< decoded image file handle
   int frame_statistic_start;

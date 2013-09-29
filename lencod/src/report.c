@@ -327,7 +327,8 @@ void report_stats(ImageParameters *p_Img, InputParameters *p_Inp, StatParameters
     fprintf(p_stat," RD-optimized mode decision   : used\n");
   else
     fprintf(p_stat," RD-optimized mode decision   : not used\n");
-
+    fprintf(p_stat," Total encoding time for the seq.  : %7.3f sec (%3.2f fps)\n", (float) p_Img->tot_time * 0.001, 1000.0 * (float) (p_Stats->frame_counter) / (float)p_Img->tot_time);
+  
   fprintf(p_stat,"\n ---------------------|----------------|---------------|");
   fprintf(p_stat,"\n     Item             |     Intra      |   All frames  |");
   fprintf(p_stat,"\n ---------------------|----------------|---------------|");
@@ -653,6 +654,9 @@ void report( ImageParameters *p_Img, InputParameters *p_Inp, StatParameters *p_S
   int64 bit_use[NUM_SLICE_TYPES][2];
   int i,j;
   int64 total_bits;
+  Slice *currSlice = NULL;
+  int SKIP_mode=0;
+  int a;
 
   bit_use[ I_SLICE][0] = p_Stats->frame_ctr[I_SLICE];
   bit_use[ P_SLICE][0] = imax(p_Stats->frame_ctr[P_SLICE ] + p_Stats->frame_ctr[SP_SLICE], 1);
@@ -664,6 +668,11 @@ void report( ImageParameters *p_Img, InputParameters *p_Inp, StatParameters *p_S
   p_Img->me_tot_time = timenorm(p_Img->me_tot_time);
 
 
+
+  for(a=0;a<397;a++){
+		SKIP_mode = SKIP_mode + p_Img->SKIP_mode[a];							
+  
+						  }
   //  Accumulate bit usage for inter and intra frames
   for (j=0; j < NUM_SLICE_TYPES; j++)
   {
@@ -811,6 +820,9 @@ void report( ImageParameters *p_Img, InputParameters *p_Inp, StatParameters *p_S
   fprintf(stdout, " Bits to avoid Startcode Emulation : %" FORMAT_OFF_T  " \n", p_Stats->bit_ctr_emulationprevention);
   fprintf(stdout, " Bits for parameter sets           : %d \n", p_Stats->bit_ctr_parametersets);
   fprintf(stdout, " Bits for filler data              : %" FORMAT_OFF_T  " \n\n", p_Stats->bit_ctr_filler_data);
+
+	
+  fprintf(stdout, " SKIP_mode              : %d   \n\n", SKIP_mode);
 
   switch (p_Inp->Verbose)
   {
