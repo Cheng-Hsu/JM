@@ -415,7 +415,7 @@ static int terminate_slice(Macroblock *currMB, int lastslice, StatParameters *cu
 ************************************************************************
 */
 int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceGroupId, int TotalCodedMBs)
-{
+{ FILE *cheat;
   Boolean end_of_slice = FALSE;
   Boolean recode_macroblock;
   Boolean prev_recode_mb = FALSE;
@@ -426,6 +426,12 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
   int SKIP=0;
   StatParameters *cur_stats = &p_Img->enc_picture->stats;
   Slice *currSlice = NULL;
+  int num;
+  int d=0;
+  double he[396];
+		char name[15]="pix (";//檔名稱
+        char format[]=").txt";//附檔名稱
+        char c[4];//限制序號為3位數以內[0, 999]
 
   p_Img->Motion_Selected = 0;
 
@@ -448,6 +454,19 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
 
   currSlice->SetLagrangianMultipliers(p_Img, p_Inp);
 
+		num=currSlice->frame_num;
+		itoa(num, c, 10);//將i(int)以10為基底轉換成c(char)
+        strcat(name, c);//將c接到name之後
+        strcat(name, format);//將format接到name之後
+
+  cheat = fopen(name, "r");
+
+ /* for(d;d<396;d++)
+  {
+	  fscanf(cheat,"%d",&he[d]);
+	  	printf ("currMB->flag_l= %d\n",he[d]);
+  }
+*/
   if (currSlice->symbol_mode == CABAC)
   {
     SetCtxModelNumber (currSlice);
@@ -456,6 +475,7 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
   p_Img->checkref = (short) (p_Inp->rdopt && p_Inp->RestrictRef && (p_Img->type==P_SLICE || p_Img->type==SP_SLICE));
 
   len = start_slice (currSlice, cur_stats);
+ // start_macroblock (currSlice, &currMB, CurrentMbAddr, FALSE);
 
   // Rate control
   if (p_Inp->RCEnable)
@@ -469,7 +489,7 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
     get_dQP_table(currSlice);
 
   while (end_of_slice == FALSE) // loop over macroblocks
-  {
+  { 
     if (p_Img->AdaptiveRounding && p_Inp->AdaptRndPeriod && (p_Img->current_mb_nr % p_Inp->AdaptRndPeriod == 0))
     {
       CalculateOffset4x4Param(p_Img, p_Inp);
@@ -482,10 +502,12 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
       currSlice->rddata = &currSlice->rddata_trellis_curr;
     else
       currSlice->rddata = &currSlice->rddata_top_frame_mb;   // store data in top frame MB
-
+ //printf ("name=%s\n",name);
+	
     start_macroblock (currSlice,  &currMB, CurrentMbAddr, FALSE);
-
-
+   // currSlice->encode_one_macroblockRD (currMB);
+   
+	fscanf(cheat,"%d",&currMB->flag_l);
     if(currSlice->UseRDOQuant)
     {
       trellis_coding(currMB, prev_recode_mb);   
@@ -494,7 +516,11 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
     {
       p_Img->masterQP = p_Img->qp;
 
-       currSlice->encode_one_macroblock (currMB);
+	 // printf ("currMB->flag_l= %d\n",currMB->flag_l);
+	  
+       currSlice->encode_one_macroblock (currMB); 
+	
+	  // fprintf(cheat,"%.2f\n",currMB->flag_l);
 	   if(currMB->SKIP_Count)p_Img->SKIP_mode[currSlice->frame_num]++;
 	 // printf ("currMB->SKIP_Count= %d\n",currSlice->SKIP_mode[currSlice->frame_num]);
       end_encode_one_macroblock(currMB);
@@ -502,11 +528,14 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
     }
     
 
+
 	end_macroblock (currMB, &end_of_slice, &recode_macroblock);
     prev_recode_mb = recode_macroblock;
     //       printf ("encode_one_slice: mb %d,  slice %d,   bitbuf bytepos %d EOS %d\n",
     //       p_Img->current_mb_nr, p_Img->current_slice_nr,
     //       currSlice->partArr[0].bitstream->byte_pos, end_of_slice);
+
+
 
     if (recode_macroblock == FALSE)       // The final processing of the macroblock has been done
     {
@@ -535,6 +564,7 @@ int encode_one_slice (ImageParameters *p_Img, InputParameters *p_Inp, int SliceG
     }
   }
 
+  fclose(cheat);
 
   if ((p_Inp->WPIterMC) && (p_Img->frameOffsetAvail == 0) && p_Img->nal_reference_idc)
   {

@@ -616,12 +616,15 @@ static void prepare_second_layer(ImageParameters *p_Img, InputParameters *p_Inp,
  ***********************************************************************
  */
 static void encode_sequence(ImageParameters *p_Img, InputParameters *p_Inp)
-{
+{ 
   int HierarchicalCoding = p_Inp->HierarchicalCoding;
   int NumberBFrames = p_Inp->NumberBFrames;
   int jumpd = p_Inp->jumpd;
   int curr_frame_to_code = 0;
   int enh_frame_to_code = 0;
+ 
+
+
 
   for (curr_frame_to_code = 0; curr_frame_to_code < p_Inp->no_frames; curr_frame_to_code++)
   {     
@@ -688,6 +691,7 @@ static void encode_sequence(ImageParameters *p_Img, InputParameters *p_Inp)
   p_Inp->HierarchicalCoding = HierarchicalCoding;
   p_Inp->NumberBFrames      = NumberBFrames;
   p_Inp->jumpd = jumpd;
+  
 }
 
 

@@ -40,6 +40,7 @@ extern short  I16Offset (int, short);
 extern int    CheckReliabilityOfRef                (Macroblock *currMB, int block, int list_idx, int ref, int mode);
 extern int    Mode_Decision_for_Intra4x4Macroblock (Macroblock *currMB, double, double*);
 extern int    RDCost_for_macroblocks               (Macroblock *currMB, double, short);
+extern int    SkipRDCost_for_macroblocks           (Macroblock *currMB, double, short);
 extern double RDCost_for_8x8blocks                 (Macroblock *currMB, RD_8x8DATA *dataTr, int*, int64*, double, int, short, Info8x8 *, double);
 
 
@@ -50,6 +51,7 @@ extern void init_enc_mb_params             (Macroblock* currMB, RD_PARAMS *enc_m
 extern void list_prediction_cost           (Macroblock *currMB, int list, int block, int mode, RD_PARAMS *enc_mb, int bmcost[5], char best_ref[2]);
 extern void determine_prediction_list      (int [5], Info8x8 *, int *);
 extern void compute_mode_RD_cost    (Macroblock *currMB, RD_PARAMS *enc_mb, short mode, short *inter_skip);
+extern void compute_skipmode_RD_cost    (Macroblock *currMB, RD_PARAMS *enc_mb, short mode, short *inter_skip);
 
 extern int transform_termination_control   (Macroblock* currMB, int mode);
 extern int bslice_16x16_termination_control(InputParameters *p_Inp, Block8x8Info *b8x8info, int *ctr16x16, int mode, int bslice);

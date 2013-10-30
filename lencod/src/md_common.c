@@ -28,7 +28,8 @@ static inline void CopyMVBlock16(short ***enc_mv, short ***rdo_mv, int block_x, 
 {
   int j;
   for (j = start; j < end; j++)
-  {
+  {//printf("enc_mv[block_y + j=%d][block_x=%d]=%d\n",block_y+j,block_x,enc_mv[block_y + j][block_x]);	 
+	//printf("rdo_mv[j=%d][0]=%d\n",j,rdo_mv[j][0]);	  
     memcpy(enc_mv[block_y + j][block_x], rdo_mv[j][0], BLOCK_MULTIPLE * 2 * sizeof(short));
   }
 }
@@ -73,7 +74,8 @@ static inline void CopyMVBlock8(short ***enc_mv, short ***rdo_mv, int block_x, i
 {
   int j;
   for (j = start; j < end; j++)
-  {
+  { //printf("enc_mv[j=%d][block_x=%d]=%d\n",j,block_x,enc_mv[j][block_x]);	 
+	//printf("rdo_mv[j=%d][offset=%d]=%d\n",j,offset,rdo_mv[j][offset]);	  
     memcpy(enc_mv[j][block_x], rdo_mv[j][offset], 4 * sizeof(short));
   }
 }
@@ -124,7 +126,9 @@ void SetMotionVectorsMBPSlice (Macroblock* currMB, PicMotionParams *motion)
   short *****all_mv  = currSlice->all_mv[LIST_0];
   int  l0_ref, mode8;
   short ***rdo_mv = motion->mv[LIST_0];
-
+  int mbAddrX=currMB->mbAddrX;
+  int frame_num=currSlice->frame_num;
+  
   if (currSlice->MbaffFrameFlag || (currSlice->UseRDOQuant && currSlice->RDOQ_QP_Num > 1))
   {
     memcpy(&rdopt->all_mv[LIST_0][0][0][0][0][0], &all_mv[0][0][0][0][0], p_Img->max_num_references * 9 * MB_BLOCK_PARTITIONS * 2 * sizeof(short));
@@ -133,50 +137,192 @@ void SetMotionVectorsMBPSlice (Macroblock* currMB, PicMotionParams *motion)
   if (currMB->mb_type == PSKIP) // Skip mode
   {
     CopyMVBlock16(rdo_mv, all_mv[0][PSKIP], currMB->block_x, currMB->block_y, 0, 4);
+	currSlice->mymv_best[frame_num][mbAddrX][0][0]=0;
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][0] = currSlice->all_mv[0][0][currMB->mb_type][0][4][0];
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][1] = currSlice->all_mv[0][0][currMB->mb_type][0][4][1];
+	//printf("currSlice->all_mv[list][ref][PSKIP][2][4][0]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][4][0]);	
+	//printf("currSlice->all_mv[list][ref][PSKIP][2][4][1]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][4][1]);	
+ 
   }
   else if (currMB->mb_type == P16x16) // 16x16
   {
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y][currMB->block_x];
     CopyMVBlock16(rdo_mv, all_mv[l0_ref][P16x16], currMB->block_x, currMB->block_y, 0, 4);
+	currSlice->mymv_best[frame_num][mbAddrX][0][0]=1;
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][0] = currSlice->all_mv[0][0][currMB->mb_type][0][4][0];
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][1] = currSlice->all_mv[0][0][currMB->mb_type][0][4][1];
+	//printf("currSlice->all_mv[list][ref][P16x16][2][4][0]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][4][0]);	
+	//printf("currSlice->all_mv[list][ref][P16x16][2][4][1]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][4][1]);	
+ 
   }
   else if (currMB->mb_type == P16x8) // 16x8
-  {
+  
+  { 
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y][currMB->block_x];
     CopyMVBlock16(rdo_mv, all_mv[l0_ref][P16x8], currMB->block_x, currMB->block_y, 0, 2);
-
+	currSlice->mymv_best[frame_num][mbAddrX][0][0]=2;
+	currSlice->all_mymv[frame_num][mbAddrX][0][2][0] = currSlice->all_mv[0][0][currMB->mb_type][0][2][0];
+	currSlice->all_mymv[frame_num][mbAddrX][0][2][1] = currSlice->all_mv[0][0][currMB->mb_type][0][2][1];
+	//printf("currSlice->all_mv[list][ref][P16x8][0][2][0]=%d\n",currSlice->all_mv[0][0][currMB->best_mode][0][2][0]);	
+   // printf("currSlice->all_mv[list][ref][P16x8][0][2][1]=%d\n",currSlice->all_mv[0][0][currMB->best_mode][0][2][1]);	
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y + 2][currMB->block_x];
     CopyMVBlock16(rdo_mv, all_mv[l0_ref][P16x8], currMB->block_x, currMB->block_y, 2, 4);
+	
+	currSlice->all_mymv[frame_num][mbAddrX][2][4][0] = currSlice->all_mv[0][0][currMB->mb_type][2][4][0];
+	currSlice->all_mymv[frame_num][mbAddrX][2][4][1] = currSlice->all_mv[0][0][currMB->mb_type][2][4][1];
+	//printf("currSlice->all_mv[list][ref][P16x8][2][4][0]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][2][4][0]);	
+	//printf("currSlice->all_mv[list][ref][P16x8][2][4][1]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][2][4][1]);	
   }
   else if (currMB->mb_type == P8x16) // 8x16
   {
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y][currMB->block_x];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][P8x16], currMB->block_x    , 0, 4, 0);
-    
+    currSlice->mymv_best[frame_num][mbAddrX][0][0]=3;
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][0] = currSlice->all_mv[0][0][currMB->mb_type][0][4][0];
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][1] = currSlice->all_mv[0][0][currMB->mb_type][0][4][1];
+	//printf("currSlice->all_mv[list][ref][P8x16][2][4][0]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][4][0]);	
+	//printf("currSlice->all_mv[list][ref][P8x16][2][4][1]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][4][1]);	
+  
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y][currMB->block_x + 2];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][P8x16], currMB->block_x + 2, 0, 4, 2);
+	
+	currSlice->all_mymv[frame_num][mbAddrX][0][6][0] = currSlice->all_mv[0][0][currMB->mb_type][0][6][0];
+	currSlice->all_mymv[frame_num][mbAddrX][0][6][1] = currSlice->all_mv[0][0][currMB->mb_type][0][6][1];
+	//printf("currSlice->all_mv[list][ref][P8x16][2][4][0]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][6][0]);	
+	//printf("currSlice->all_mv[list][ref][P8x16][2][4][1]=%d\n",currSlice->all_mv[0][0][currMB->mb_type][0][6][1]);	
+  
   } 
   else if (currMB->mb_type == P8x8) // 8x8
-  {
+  { 
     mode8 = currMB->b8x8[0].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y    ][currMB->block_x    ];     
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x    , 0, 2, 0);
-    	 
+    currSlice->mymv_best[frame_num][mbAddrX][0][0]=4;
+	currSlice->all_mymv[frame_num][mbAddrX][0][2][0] = currSlice->all_mv[0][0][mode8][0][2][0];	
+	currSlice->all_mymv[frame_num][mbAddrX][0][2][1] = currSlice->all_mv[0][0][mode8][0][2][1];	
+	if(mode8==5){
+		currSlice->mymv_best[frame_num][mbAddrX][0][1]=5;
+		currSlice->all_mymv[frame_num][mbAddrX][-1][4][0] = currSlice->all_mv[0][0][mode8][-1][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][-1][4][1] = currSlice->all_mv[0][0][mode8][-1][4][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][4][0] = currSlice->all_mv[0][0][mode8][0][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][4][1] = currSlice->all_mv[0][0][mode8][0][4][1];
+	}
+	if(mode8==6){
+		currSlice->mymv_best[frame_num][mbAddrX][0][2]=6;
+		currSlice->all_mymv[frame_num][mbAddrX][0][4][0] = currSlice->all_mv[0][0][mode8][0][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][4][1] = currSlice->all_mv[0][0][mode8][0][4][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][5][0] = currSlice->all_mv[0][0][mode8][0][5][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][5][1] = currSlice->all_mv[0][0][mode8][0][5][1];
+	}
+	
+	if(mode8==7){	 
+		currSlice->mymv_best[frame_num][mbAddrX][0][3]=7;
+		currSlice->all_mymv[frame_num][mbAddrX][0][4][0] = currSlice->all_mv[0][0][mode8][0][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][4][1] = currSlice->all_mv[0][0][mode8][0][4][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][5][0] = currSlice->all_mv[0][0][mode8][0][5][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][5][1] = currSlice->all_mv[0][0][mode8][0][5][1];
+		currSlice->all_mymv[frame_num][mbAddrX][1][4][0] = currSlice->all_mv[0][0][mode8][1][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][1][4][1] = currSlice->all_mv[0][0][mode8][1][4][1];
+		currSlice->all_mymv[frame_num][mbAddrX][1][5][0] = currSlice->all_mv[0][0][mode8][1][5][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][1][5][1] = currSlice->all_mv[0][0][mode8][1][5][1];
+	}
 	
     mode8 = currMB->b8x8[1].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y    ][currMB->block_x + 2];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x + 2, 0, 2, 2);
-    
+	currSlice->mymv_best[frame_num][mbAddrX][0][1]=4;
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][0] = currSlice->all_mv[0][0][mode8][0][4][0];	
+	currSlice->all_mymv[frame_num][mbAddrX][0][4][1] = currSlice->all_mv[0][0][mode8][0][4][1];
+	if(mode8==5){
+		currSlice->mymv_best[frame_num][mbAddrX][1][1]=5;
+		currSlice->all_mymv[frame_num][mbAddrX][-1][2][0] = currSlice->all_mv[0][0][mode8][-1][2][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][-1][2][1] = currSlice->all_mv[0][0][mode8][-1][2][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][2][0] = currSlice->all_mv[0][0][mode8][0][2][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][2][1] = currSlice->all_mv[0][0][mode8][0][2][1];
+	}
+	if(mode8==6){
+		currSlice->mymv_best[frame_num][mbAddrX][1][2]=6;
+		currSlice->all_mymv[frame_num][mbAddrX][0][2][0] = currSlice->all_mv[0][0][mode8][0][2][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][2][1] = currSlice->all_mv[0][0][mode8][0][2][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][3][0] = currSlice->all_mv[0][0][mode8][0][3][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][3][1] = currSlice->all_mv[0][0][mode8][0][3][1];
+	}
 	
+     if(mode8==7){	
+	 	currSlice->mymv_best[frame_num][mbAddrX][1][3]=7;
+		currSlice->all_mymv[frame_num][mbAddrX][0][2][0] = currSlice->all_mv[0][0][mode8][0][2][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][2][1] = currSlice->all_mv[0][0][mode8][0][2][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][3][0] = currSlice->all_mv[0][0][mode8][0][3][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][0][3][1] = currSlice->all_mv[0][0][mode8][0][3][1];
+		currSlice->all_mymv[frame_num][mbAddrX][1][2][0] = currSlice->all_mv[0][0][mode8][1][2][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][1][2][1] = currSlice->all_mv[0][0][mode8][1][2][1];
+		currSlice->all_mymv[frame_num][mbAddrX][1][3][0] = currSlice->all_mv[0][0][mode8][1][3][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][1][3][1] = currSlice->all_mv[0][0][mode8][1][3][1];
+	}
     mode8 = currMB->b8x8[2].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y + 2][currMB->block_x    ];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x, 2, 4, 0);
-	  
+	currSlice->mymv_best[frame_num][mbAddrX][0][2]=4;
+	currSlice->all_mymv[frame_num][mbAddrX][2][4][0] = currSlice->all_mv[0][0][mode8][2][4][0];	
+	currSlice->all_mymv[frame_num][mbAddrX][2][4][1] = currSlice->all_mv[0][0][mode8][2][4][1];
+	if(mode8==5){
+		currSlice->mymv_best[frame_num][mbAddrX][2][1]=5;
+		currSlice->all_mymv[frame_num][mbAddrX][1][4][0] = currSlice->all_mv[0][0][mode8][1][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][1][4][1] = currSlice->all_mv[0][0][mode8][1][4][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][4][0] = currSlice->all_mv[0][0][mode8][2][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][4][1] = currSlice->all_mv[0][0][mode8][2][4][1];
+	}
+	if(mode8==6){
+		currSlice->mymv_best[frame_num][mbAddrX][2][2]=6;
+		currSlice->all_mymv[frame_num][mbAddrX][2][4][0] = currSlice->all_mv[0][0][mode8][2][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][4][1] = currSlice->all_mv[0][0][mode8][2][4][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][5][0] = currSlice->all_mv[0][0][mode8][2][5][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][5][1] = currSlice->all_mv[0][0][mode8][2][5][1];
+	}
 	
+	 if(mode8==7){	 
+	 	currSlice->mymv_best[frame_num][mbAddrX][2][3]=7;
+		currSlice->all_mymv[frame_num][mbAddrX][2][4][0] = currSlice->all_mv[0][0][mode8][2][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][4][1] = currSlice->all_mv[0][0][mode8][2][4][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][5][0] = currSlice->all_mv[0][0][mode8][2][5][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][5][1] = currSlice->all_mv[0][0][mode8][2][5][1];
+		currSlice->all_mymv[frame_num][mbAddrX][3][4][0] = currSlice->all_mv[0][0][mode8][3][4][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][3][4][1] = currSlice->all_mv[0][0][mode8][3][4][1];
+		currSlice->all_mymv[frame_num][mbAddrX][3][5][0] = currSlice->all_mv[0][0][mode8][3][5][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][3][5][1] = currSlice->all_mv[0][0][mode8][3][5][1];
+	}
     mode8 = currMB->b8x8[3].mode;
     l0_ref = motion->ref_idx[LIST_0][currMB->block_y + 2][currMB->block_x + 2];
     CopyMVBlock8(&rdo_mv[currMB->block_y], all_mv[l0_ref][mode8], currMB->block_x + 2, 2, 4, 2);
-	  
+	currSlice->mymv_best[frame_num][mbAddrX][0][3]=4;
+	currSlice->all_mymv[frame_num][mbAddrX][2][6][0] = currSlice->all_mv[0][0][mode8][2][6][0];	
+	currSlice->all_mymv[frame_num][mbAddrX][2][6][1] = currSlice->all_mv[0][0][mode8][2][6][1];
+	if(mode8==5){
+		currSlice->mymv_best[frame_num][mbAddrX][3][1]=5;
+		currSlice->all_mymv[frame_num][mbAddrX][1][6][0] = currSlice->all_mv[0][0][mode8][1][6][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][1][6][1] = currSlice->all_mv[0][0][mode8][1][6][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][6][0] = currSlice->all_mv[0][0][mode8][2][6][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][6][1] = currSlice->all_mv[0][0][mode8][2][6][1];
+	}
+	if(mode8==6){
+		currSlice->mymv_best[frame_num][mbAddrX][3][2]=6;
+		currSlice->all_mymv[frame_num][mbAddrX][2][6][0] = currSlice->all_mv[0][0][mode8][2][6][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][6][1] = currSlice->all_mv[0][0][mode8][2][6][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][7][0] = currSlice->all_mv[0][0][mode8][2][7][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][7][1] = currSlice->all_mv[0][0][mode8][2][7][1];
+	}
 	
+	if(mode8==7){	  
+		currSlice->mymv_best[frame_num][mbAddrX][3][3]=7;
+		currSlice->all_mymv[frame_num][mbAddrX][2][6][0] = currSlice->all_mv[0][0][mode8][2][6][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][6][1] = currSlice->all_mv[0][0][mode8][2][6][1];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][7][0] = currSlice->all_mv[0][0][mode8][2][7][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][2][7][1] = currSlice->all_mv[0][0][mode8][2][7][1];
+		currSlice->all_mymv[frame_num][mbAddrX][3][6][0] = currSlice->all_mv[0][0][mode8][3][6][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][3][6][1] = currSlice->all_mv[0][0][mode8][3][6][1];
+		currSlice->all_mymv[frame_num][mbAddrX][3][7][0] = currSlice->all_mv[0][0][mode8][3][7][0];	
+		currSlice->all_mymv[frame_num][mbAddrX][3][7][1] = currSlice->all_mv[0][0][mode8][3][7][1]; 
+	}
   }
   else // Intra modes
   {

@@ -234,6 +234,7 @@ void init_rdopt (Slice *currSlice)
   case 1:
   default:
     currSlice->encode_one_macroblock = encode_one_macroblock_high;
+	 currSlice->encode_one_macroblockRD = encode_one_macroblock_highRD;
     break;
   case 2:
     currSlice->encode_one_macroblock = encode_one_macroblock_highfast;
@@ -1481,7 +1482,8 @@ int RDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to 
   double      Thigh;
   double  exp(double high);
   double  exp(double low);
-
+  int mbAddrX=currMB->mbAddrX;
+  
 
   int         use_of_cc = (currSlice->slice_type != I_SLICE &&  currSlice->symbol_mode == CAVLC);
   int         cc_rate, dummy;
@@ -1489,6 +1491,9 @@ int RDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to 
   imgpel     **mb_pred = currSlice->mb_pred[0];
   imgpel     ***curr_mpr_16x16 = currSlice->mpr_16x16[0];
   
+  //////////////////////////////////
+  
+
  // printf ("currMBNum=====================%d\n",currMB->mbAddrX);  
   
   // Test MV limits for Skip Mode. This could be necessary for MBAFF case Frame MBs.
@@ -1498,9 +1503,12 @@ int RDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to 
       return 0;
   }
 
+
+
   //=====
   //=====  Set Reference Pictures and Block modes
   //=====
+  
   SetModesAndRefframeForBlocks (currMB, mode);
   //=====
   //=====  Set Motion Vectors
@@ -1516,7 +1524,317 @@ int RDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to 
   //=====
   //=====  Get coefficients, reconstruction values, CBP etc
   //=====
+
+  if (mode < P8x8)
+  {
+    if (currSlice->P444_joined)
+      luma_residual_coding_p444 (currMB);
+    else
+      luma_residual_coding (currMB);
+  }
+  else if (mode == P8x8)
+  {
+    SetCoeffAndReconstruction8x8 (currMB);
+  }
+  else if (mode==I4MB)
+  {
+    currMB->cbp = Mode_Decision_for_Intra4x4Macroblock (currMB, lambda, &dummy_d);
+  }
+  else if (mode==I16MB)
+  {
+    if (active_sps->chroma_format_idc == YUV444)
+      Intra16x16_Mode_Decision444 (currMB);
+    else if(p_Inp->I16rdo)
+      Intra16x16_Mode_Decision_RDopt    (currMB, lambda);
+    else
+      Intra16x16_Mode_Decision_SAD      (currMB);
+  }
+  else if(mode==I8MB)
+  {
+    currMB->cbp = Mode_Decision_for_Intra8x8Macroblock(currMB, lambda, &dummy_d);
+  }
+  else if(mode==IPCM)
+  {
+    // LUMA
+    copy_image_data_16x16(&p_Img->enc_picture->imgY[currMB->pix_y], &p_Img->pCurImg[currMB->opix_y], currMB->pix_x, currMB->pix_x);
+
+    // CHROMA
+    if ((p_Img->yuv_format != YUV400) && !IS_INDEPENDENT(p_Inp))
+    {      
+      copy_image_data(&p_Img->enc_picture->imgUV[0][currMB->pix_c_y], &p_Img->pImgOrg[1][currMB->opix_c_y], currMB->pix_c_x, currMB->pix_c_x, p_Img->mb_cr_size_x, p_Img->mb_cr_size_y);
+      copy_image_data(&p_Img->enc_picture->imgUV[1][currMB->pix_c_y], &p_Img->pImgOrg[2][currMB->opix_c_y], currMB->pix_c_x, currMB->pix_c_x, p_Img->mb_cr_size_x, p_Img->mb_cr_size_y);
+    }
+
+    for (j=0;j<4;j++)
+      for (i=0; i<(4+p_Img->num_blk8x8_uv); i++)
+        p_Img->nz_coeff[currMB->mbAddrX][j][i] = 16;
+  }
+
+  if (p_Inp->rdopt == 3)
+  {
+    // We need the reconstructed prediction residue for the simulated decoders.
+    compute_residue_block (currMB, &p_Img->enc_picture->p_curr_img[currMB->pix_y], p_Img->p_decs->res_img[0], mode == I16MB ? currSlice->mpr_16x16[0][ (short) currMB->i16mode] : currSlice->mb_pred[0], 0, 16);
+  }
+
+  //Rate control
+  if (p_Inp->RCEnable)
+  {
+    if (mode == I16MB)
+      memcpy(p_RDO->pred[0], curr_mpr_16x16[ (short) currMB->i16mode][0], MB_PIXELS * sizeof(imgpel));
+    else
+      memcpy(p_RDO->pred[0], mb_pred[0], MB_PIXELS * sizeof(imgpel));
+  }
+
+  currMB->i16offset = 0;
+  dummy = 0;
+
+  if (((p_Img->yuv_format != YUV400) && (active_sps->chroma_format_idc != YUV444)) && (mode != IPCM))
+    chroma_residual_coding (currMB);
+
+  if (mode==I16MB)
+    currMB->i16offset = I16Offset  (currMB->cbp, currMB->i16mode);
+
+  //=====
+  //=====   GET DISTORTION
+  //=====
+  // LUMA
+  if (p_Inp->rdopt == 3)
+  {
+    double ddistortion = 0;
+    if (mode != P8x8)
+    {
+      for (k = 0; k<p_Inp->NoOfDecoders ;k++)
+      {
+        decode_one_mb (currMB, p_Img->enc_picture, k);
+        ddistortion += (double) compute_SSE16x16(&p_Img->pImgOrg[0][currMB->opix_y], &p_Img->enc_picture->p_dec_img[0][k][currMB->pix_y], currMB->pix_x, currMB->pix_x);
+        if (ddistortion > currMB->min_rdcost * p_Inp->NoOfDecoders)
+          return 0;
+      }
+    }
+    else
+    {
+      for (k = 0; k<p_Inp->NoOfDecoders ;k++)
+      {
+        ddistortion += (double) compute_SSE16x16(&p_Img->pImgOrg[0][currMB->opix_y], &p_Img->enc_picture->p_dec_img[0][k][currMB->pix_y], currMB->pix_x, currMB->pix_x);
+        if (ddistortion > currMB->min_rdcost * p_Inp->NoOfDecoders)
+          return 0;
+      }
+    }
+    distortion = (int64) ((ddistortion) / p_Inp->NoOfDecoders + 0.5);
+
+    if ((p_Img->yuv_format != YUV400) && (active_sps->chroma_format_idc != YUV444))
+    {
+      // CHROMA
+      distortion += compute_SSE_cr(&p_Img->pImgOrg[1][currMB->opix_c_y], &p_Img->enc_picture->imgUV[0][currMB->pix_c_y], currMB->pix_c_x, currMB->pix_c_x, p_Img->mb_cr_size_y, p_Img->mb_cr_size_x);
+      distortion += compute_SSE_cr(&p_Img->pImgOrg[2][currMB->opix_c_y], &p_Img->enc_picture->imgUV[1][currMB->pix_c_y], currMB->pix_c_x, currMB->pix_c_x, p_Img->mb_cr_size_y, p_Img->mb_cr_size_x);
+    }
+  }
+  else
+  {
+    distortion = currSlice->getDistortion(currMB);
+  }
+ if(mode==0){
+	  //printf("%d\n",distortion);
+	 // system("pause");
+	  }
+  if ((double)distortion > currMB->min_rdcost)
+    return 0;
+    //printf("passed distortion %.2f %.2f\n", (double)distortion, currMB->min_rdcost);
+
+  if (currMB->qp_scaled[0] == 0 && p_Img->lossless_qpprime_flag == 1 && distortion != 0)
+    return 0;
+
+  //=====   S T O R E   C O D I N G   S T A T E   =====
+  //---------------------------------------------------
+  currSlice->store_coding_state (currMB, currSlice->p_RDO->cs_cm);
+
+  //=====
+  //=====   GET RATE
+  //=====
+  //----- macroblock header -----
+  if (use_of_cc)
+  {
+    if (currMB->mb_type!=0 || (currSlice->slice_type == B_SLICE && currMB->cbp!=0))
+    {
+      // cod counter and macroblock mode are written ==> do not consider code counter
+      tmp_cc = p_Img->cod_counter;
+      
+      rate = currSlice->write_MB_layer (currMB, 1, &coeff_rate);
+
+
+      ue_linfo (tmp_cc, dummy, &cc_rate, &dummy);
+      rate  -= cc_rate;
+      p_Img->cod_counter = tmp_cc;
+    }
+    else
+    {
+      // cod counter is just increased  ==> get additional rate
+      ue_linfo (p_Img->cod_counter + 1, dummy, &rate,    &dummy);
+      ue_linfo (p_Img->cod_counter    , dummy, &cc_rate, &dummy);
+      rate -= cc_rate;
+    }
+  }
+  else
+  {
+    rate = currSlice->write_MB_layer (currMB, 1, &coeff_rate);
+  }
+ if(mode==0){
+	 // printf("%d\n",rate);
+	 // system("pause");
+	  }
+  //=====   R E S T O R E   C O D I N G   S T A T E   =====
+  //-------------------------------------------------------
+  currSlice->reset_coding_state (currMB, currSlice->p_RDO->cs_cm);
+ if(mode==0){
+	  //printf("%f\n",lambda);
+	 // system("pause");
+	  }
+  if (p_Inp->ForceTrueRateRDO == 1)
+    rdcost = (double)distortion + lambda * rate;
+  else if (p_Inp->ForceTrueRateRDO == 2)
+    rdcost = (double)distortion + lambda * (rate +  IS_INTRA(currMB));
+  else
+    rdcost = (double)distortion + lambda * dmax(0.5,(double)rate);
+	 if(mode==0){
+	 // printf("NOR===%f\n",rdcost);
+	 // system("pause");
+	// currMB->flag_l=rdcost;
+	  }
+		//printf ("mode=%d---rdcost=%f\n",mode,rdcost);
+		
+	/*if(currMB->mbAddrX==0){}
+	else
+	{
+		if(mode==0)
+		{
+
+		
+			if(rdcost < Tlow) currMB->Tlow_flag =1;
+			else if(rdcost > Thigh) currMB->Thigh_flag =1;
+			else 
+			{
+				//currMB->mode2_flag =1;
+				if(currMB->L[mbAddrX] <=1) currMB->mode1_flag =1;
+				else if((currMB->L[mbAddrX] <=2) && (currMB->L[mbAddrX] >1))currMB->mode2_flag =1;
+				else if(currMB->L[mbAddrX] >2)currMB->mode4_flag =1;
+				
+			}
+	
+		}
+	}*/
+  if (rdcost >= currMB->min_rdcost ||
+    ((currMB->qp_scaled[0]) == 0 && p_Img->lossless_qpprime_flag == 1 && distortion != 0))
+  {
+#if FASTMODE
+    // Reordering RDCost comparison order of mode 0 and mode 1 in P_SLICE
+    // if RDcost of mode 0 and mode 1 is same, we choose best_mode is 0
+    // This might not always be good since mode 0 is more biased towards rate than quality.
+    if((currSlice->slice_type != P_SLICE || mode != 0 || rdcost != currMB->min_rdcost) || IS_FREXT_PROFILE(p_Inp->ProfileIDC))
+#endif
+      return 0;
+  }
+
+
+  if ((currSlice->MbaffFrameFlag) && (mode ? 0: ((currSlice->slice_type == B_SLICE) ? !currMB->cbp:1)))  // AFF and current is skip
+  {
+    if (currMB->mbAddrX & 0x01) //bottom
+    {
+      if (prevMB->mb_type ? 0:((currSlice->slice_type == B_SLICE) ? !prevMB->cbp:1)) //top is skip
+      {
+        if (!(field_flag_inference(currMB) == currMB->mb_field)) //skip only allowed when correct inference
+          return 0;
+      }
+    }
+  }
+
+  //=====   U P D A T E   M I N I M U M   C O S T   =====
+  //-----------------------------------------------------
+  currMB->min_rdcost = rdcost;
+  currMB->min_dcost = (double) distortion;
+  currMB->min_rate = lambda * (double)coeff_rate;
+
+#ifdef BEST_NZ_COEFF  
+  for (j=0;j<4;j++)
+    memcpy(&p_Img->gaaiMBAFF_NZCoeff[j][0], &p_Img->nz_coeff[currMB->mbAddrX][j][0], (4 + p_Img->num_blk8x8_uv) * sizeof(int));
+#endif
+
+  return 1;
+}
+
+/*!
+ *************************************************************************************
+ * \brief
+ *    SkipR-D Cost for a macroblock
+ *************************************************************************************
+ */
+int SkipRDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to code
+                            double   lambda,       // <-- lagrange multiplier
+                            short    mode)         // <-- mode (0-COPY/DIRECT, 1-16x16, 2-16x8, 3-8x16, 4-8x8(+), 5-Intra4x4, 6-Intra16x16)                            
+{
+  Slice *currSlice = currMB->p_slice;
+  RDOPTStructure *p_RDO = currSlice->p_RDO;
+  ImageParameters *p_Img = currMB->p_Img;
+  InputParameters *p_Inp = currMB->p_Inp;
+  PicMotionParams *motion = &p_Img->enc_picture->motion;
+
+  seq_parameter_set_rbsp_t *active_sps = p_Img->active_sps;
+
+  int         i, j, k; //, k, ****ip4;
+  int         rate = 0, coeff_rate = 0;
+  int64       distortion = 0;
+  double      rdcost;
+  Macroblock  *prevMB   = currMB->PrevMB; 
+  int         tmp_cc;
+
+  double	  low=0.1759*currMB->qp;
+  double	  high=0.0675*currMB->qp;
+  double      Tlow;
+  double      Thigh;
+  double  exp(double high);
+  double  exp(double low);
+  int mbAddrX=currMB->mbAddrX;
   
+
+  int         use_of_cc = (currSlice->slice_type != I_SLICE &&  currSlice->symbol_mode == CAVLC);
+  int         cc_rate, dummy;
+  double      dummy_d;
+  imgpel     **mb_pred = currSlice->mb_pred[0];
+  imgpel     ***curr_mpr_16x16 = currSlice->mpr_16x16[0];
+  
+  //////////////////////////////////
+  
+
+ // printf ("currMBNum=====================%d\n",currMB->mbAddrX);  
+  
+  // Test MV limits for Skip Mode. This could be necessary for MBAFF case Frame MBs.
+  if ((currSlice->MbaffFrameFlag) && (!currMB->mb_field) && (currSlice->slice_type == P_SLICE) && (mode==0) )
+  {
+    if (out_of_bounds_mvs(p_Img, currSlice->all_mv[LIST_0][0][0][0][0]))
+      return 0;
+  }
+
+
+
+  //=====
+  //=====  Set Reference Pictures and Block modes
+  //=====
+  
+  SetModesAndRefframeForBlocks (currMB, mode);
+  //=====
+  //=====  Set Motion Vectors
+  //=====
+  currSlice->SetMotionVectorsMB (currMB, motion);
+
+  //=====
+  //=====  Threshold for skip mode(HSU)
+  //=====
+   Tlow=34*exp(low);
+   Thigh=24215*exp(high);
+
+  //=====
+  //=====  Get coefficients, reconstruction values, CBP etc
+  //=====
+
   if (mode < P8x8)
   {
     if (currSlice->P444_joined)
@@ -1678,27 +1996,31 @@ int RDCost_for_macroblocks (Macroblock  *currMB,   // <-- Current Macroblock to 
     rdcost = (double)distortion + lambda * (rate +  IS_INTRA(currMB));
   else
     rdcost = (double)distortion + lambda * dmax(0.5,(double)rate);
+	 if(mode==0){
+	//  printf("RD %f\n",rdcost);
+	 // system("pause");
+	  }
+	  
+		//printf ("mode=%d---rdcost=%f\n",mode,rdcost);
+	/*if(currMB->mbAddrX!=0){
 	
-		//printf ("mode=%d---rdcost=%d\n",mode,rdcost);
-	if(currMB->mbAddrX==0){}
-	else
-	{
 		if(mode==0)
 		{
+
+		
 			if(rdcost < Tlow) currMB->Tlow_flag =1;
 			else if(rdcost > Thigh) currMB->Thigh_flag =1;
-			else
+			else 
 			{
-				if((currMB->L) <=1) currMB->mode1_flag =1;
-				else if((currMB->L) >2)currMB->mode4_flag =1;
-				else
-				{
-				currMB->mode2_flag =1;currMB->mode3_flag =1;
-				}
+				//currMB->mode2_flag =1;
+				if(currMB->L[mbAddrX] <=1) currMB->mode1_flag =1;
+				else if((currMB->L[mbAddrX] <=2) && (currMB->L[mbAddrX] >1))currMB->mode2_flag =1;
+				else if(currMB->L[mbAddrX] >2)currMB->mode4_flag =1;
+				
 			}
 	
 		}
-	}
+	}*/
   if (rdcost >= currMB->min_rdcost ||
     ((currMB->qp_scaled[0]) == 0 && p_Img->lossless_qpprime_flag == 1 && distortion != 0))
   {
@@ -2271,6 +2593,7 @@ static void set_stored_macroblock_parameters (Macroblock *currMB)
           motion->ref_pic_id [LIST_0][block_y][block_x] = p_Img->enc_picture->ref_pic_num[LIST_0 + currMB->list_offset][0];
           motion->mv         [LIST_0][block_y][block_x][0] = cur_mv[0];
           motion->mv         [LIST_0][block_y][block_x][1] = cur_mv[1];
+		 
         }
         else
         {
@@ -2278,6 +2601,8 @@ static void set_stored_macroblock_parameters (Macroblock *currMB)
           motion->ref_idx    [LIST_0][block_y][block_x] = cur_ref;
           motion->ref_pic_id [LIST_0][block_y][block_x] = p_Img->enc_picture->ref_pic_num[LIST_0 + currMB->list_offset][(short)cur_ref];
           memcpy(motion->mv  [LIST_0][block_y][block_x], currSlice->all_mv[LIST_0][(short)cur_ref][(short) currMB->b8x8[k].mode][j][i], 2 * sizeof(short));
+		  //printf("all_mv[LIST_0][(short)cur_ref=%d][(short) currMB->b8x8[k].mode=%d][j=%d][i=%d]=%d\n",cur_ref,currMB->b8x8[k].mode,j,i,currSlice->all_mv[LIST_0][(short)cur_ref][(short) currMB->b8x8[k].mode][j][i]);
+		 // printf("currSlice->all_mv[list][ref][blocktype][by][bx][0]=%d\n",p_Img->enc_picture->ref_pic_num[LIST_0 + currMB->list_offset][(short)cur_ref]);
         }
       }
 

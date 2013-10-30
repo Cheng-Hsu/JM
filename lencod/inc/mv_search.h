@@ -37,6 +37,7 @@ extern void  FindSkipModeMotionVector     (Macroblock *currMB);
 
 extern void init_ME_engine    (Macroblock *currMB);
 extern int  BlockMotionSearch (Macroblock *currMB, MEBlock *mv_block, int,int, int*);
+extern int  MotionSearchL (Macroblock *currMB, MEBlock *mv_block);
 extern void init_mv_block     (Macroblock *currMB, MEBlock *mv_block, short blocktype, int list, char ref_idx, short mb_x, short mb_y);
 extern void get_original_block(ImageParameters *p_Img, InputParameters *p_Inp, MEBlock *mv_block);
 extern void free_mv_block     (InputParameters *p_Inp, MEBlock *mv_block);

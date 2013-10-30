@@ -309,7 +309,7 @@ void Configure (ImageParameters *p_Img, InputParameters *p_Inp, int ac, char *av
     error (errortext, 300);
   ParseContent (p_Inp, Map, content, strlen(content)); 
   
-/*  switch(Qptest){ 
+ /* switch(Qptest){ 
 
         case 0: p_Inp->qp[0][0]=40;
 				p_Inp->qp[0][2]=40;
@@ -331,8 +331,8 @@ void Configure (ImageParameters *p_Img, InputParameters *p_Inp, int ac, char *av
 				p_Inp->qp[0][2]=24; 
             break; 
        
-    } 
-*/
+    } */
+
   printf ("\n");
   free (content);
 

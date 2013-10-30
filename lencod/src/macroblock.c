@@ -2777,7 +2777,12 @@ int writeMotionVector8x8 (Macroblock *currMB,
       get_neighbors(currMB, block, i<<2, j<<2, step_h<<2);
       currMB->GetMVPredictor (currMB, block, predMV, (short) refindex, motion->ref_idx[list_idx], motion->mv[list_idx], (i<<2), (j<<2), step_h<<2, step_v<<2);
       //test_clip_mvs(p_Img, cur_mv, currMB->write_mb);
-
+		
+		//if(currMB->mbAddrX==220){
+		//   	printf("mode=%d\n",mv_mode);
+		//	  printf("pred_mv[0]=%d,pred_mv[1]=%d\n",predMV[0],predMV[1]);
+		//	  printf("cur_mv[0]=%d,cur_mv[1]=%d\n",cur_mv[0],cur_mv[1]);
+	 //  }
       for (k=0; k<2; ++k)
       {
         curr_mvd = cur_mv[k] - predMV[k];
@@ -2802,7 +2807,8 @@ int writeMotionVector8x8 (Macroblock *currMB,
       }
     }
   }
-
+	//if(currMB->mbAddrX==220)	
+	//system("pause");
   mbBits->mb_inter = mbBits->mb_inter + (unsigned short) rate;
   return rate;
 }

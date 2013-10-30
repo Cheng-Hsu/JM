@@ -280,7 +280,7 @@ void encode_one_macroblock_highloss (Macroblock *currMB)
               continue;
           }
 
-          compute_mode_RD_cost(currMB, &enc_mb, (short) mode, &inter_skip);
+          compute_mode_RD_cost(currMB, &enc_mb,(short) mode, &inter_skip);
         }
       }// for (index=0; index<max_index; index++)
     }// for (currMB->c_ipred_mode=DC_PRED_8; currMB->c_ipred_mode<=chroma_pred_mode_range[1]; currMB->c_ipred_mode++)                     

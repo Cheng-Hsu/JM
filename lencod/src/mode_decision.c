@@ -393,7 +393,11 @@ void compute_mode_RD_cost(Macroblock *currMB,
   Slice *currSlice = currMB->p_slice;
   RDOPTStructure  *p_RDO = currSlice->p_RDO;
   int bslice = (currSlice->slice_type == B_SLICE);
+	PixelPos mb[4];
+	short pmv[2];
 
+  PicMotionParams *motion = &p_Img->enc_picture->motion;
+  
   //--- transform size ---
   currMB->luma_transform_size_8x8_flag = (byte) (p_Inp->Transform8x8Mode==2
     ?  (mode >= 1 && mode <= 3)
@@ -446,9 +450,9 @@ void compute_mode_RD_cost(Macroblock *currMB,
               else
                 rc_store_diff(currSlice->diffy, &p_Img->pCurImg[currMB->opix_y], currMB->pix_x, p_RDO->pred);
             }
-
+		
             store_macroblock_parameters (currMB, mode);
-
+		
             if(p_Inp->rdopt == 2 && mode == 0 && p_Inp->EarlySkipEnable)
             {
               // check transform quantized coeff.
@@ -482,7 +486,7 @@ void compute_mode_RD_cost(Macroblock *currMB,
 
           if (p_Img->AdaptiveRounding)
             reset_adaptive_rounding_direct(p_Img);
-
+		
           store_macroblock_parameters (currMB, mode);
         }
       }
@@ -497,6 +501,48 @@ void compute_mode_RD_cost(Macroblock *currMB,
         update_adaptive_rounding_16x16( p_Img, p_Img->ARCofAdj4x4, mode);
     }
   }
+}
+
+/*!
+*************************************************************************************
+* \brief
+*    RD decision process
+*************************************************************************************
+*/
+void compute_skipmode_RD_cost(Macroblock *currMB,
+                          RD_PARAMS *enc_mb,
+                          short mode,
+                          short *inter_skip)
+{
+  ImageParameters *p_Img = currMB->p_Img;
+  InputParameters *p_Inp = currMB->p_Inp;
+  int terminate_16x16 = 0, terminate_trans = 0, ctr16x16 = 0;
+  Slice *currSlice = currMB->p_slice;
+  RDOPTStructure  *p_RDO = currSlice->p_RDO;
+  int bslice = (currSlice->slice_type == B_SLICE);
+	PixelPos mb[4];
+	short pmv[2];
+	int a=0;
+
+ PicMotionParams *motion = &p_Img->enc_picture->motion;
+  
+  //--- transform size ---
+  currMB->luma_transform_size_8x8_flag = (byte) (p_Inp->Transform8x8Mode==2
+    ?  (mode >= 1 && mode <= 3)
+    || (mode == 0 && bslice && p_Img->active_sps->direct_8x8_inference_flag)
+    || ((mode == P8x8) && (enc_mb->valid[4]))
+    :  0);
+
+
+  SetModesAndRefframeForBlocks (currMB, (short) mode);
+  memset( currSlice->cofAC[0][0][0], 0, 2080 * sizeof(int)); // 4 * 4 * 2 * 65
+
+  // Encode with coefficients
+  currSlice->NoResidueDirect = 0;
+
+          a=SkipRDCost_for_macroblocks (currMB, enc_mb->lambda_md, mode);
+      //   if(currMB->flag_l==1)
+        //    store_macroblock_parameters (currMB, mode);
 }
 
 

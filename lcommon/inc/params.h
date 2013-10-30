@@ -40,7 +40,9 @@ struct inp_par_enc
   int B_List1_refs;                     //!< number of reference picture in list 1 in B pictures
   int Log2MaxFNumMinus4;                //!< value of syntax element log2_max_frame_num
   int Log2MaxPOCLsbMinus4;              //!< value of syntax element log2_max_pic_order_cnt_lsb_minus4
-
+  FILE                 *cheat;
+  int mb;
+  double head[396];
   // Input/output sequence format related variables
   FrameFormat source;                   //!< source related information
   FrameFormat output;                   //!< output related information

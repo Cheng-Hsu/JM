@@ -360,11 +360,13 @@ struct macroblock
   int				  mode6_flag;
   int				  mode7_flag;
   int				  mode8_flag;
+  int				  mode0_flag;
   int				  SKIP_Count;
   int				  pmva;
   int				  pmvb;
   int				  pmvc;
-  int                 L;
+  float              L[400];
+  int				  flag_l;
   char                intra_pred_modes   [MB_BLOCK_PARTITIONS];
   char                intra_pred_modes8x8[MB_BLOCK_PARTITIONS];           //!< four 8x8 blocks in a macroblock
 
@@ -393,6 +395,7 @@ struct macroblock
   // Functions
   void (*GetMVPredictor) (struct macroblock *currMB, PixelPos *block, short pmv[2], short ref_frame, 
     char **refPic, short ***tmp_mv, int mb_x, int mb_y, int blockshape_x, int blockshape_y);
+  void (*GetMVPredictorL) (struct macroblock *currMB, PixelPos *block);
   int (*IntPelME)       (struct macroblock *currMB, MotionVector *, struct me_block *mv_block, int, int);
   int (*BiPredME)       (struct macroblock *currMB, int, MotionVector *, MotionVector *, MotionVector *, MotionVector *, struct me_block *, int, int, int);
   int (*SubPelBiPredME) (struct macroblock *currMB, struct me_block *, int list, 
@@ -561,12 +564,13 @@ typedef struct slice
   short               chroma_log_weight_denom;
   short               wp_luma_round;
   short               wp_chroma_round;
-
+  short    ppa;
   short  max_num_references;      //!< maximum number of reference pictures that may occur
   // Motion vectors for a macroblock
   // These need to be changed to MotionVector parameters
   short ******all_mv;         //!< replaces local all_mv
-  short all_mymv[400][4][4][2];
+  short all_mymv[301][400][8][8][2];
+  short mymv_best[301][400][4][4];
   short *******bipred_mv;     //!< Biprediction MVs  
   //Weighted prediction
   short ***wp_weight;         // weight in [list][index][component] order
@@ -641,7 +645,7 @@ typedef struct slice
   int  coeff[64];
   int  coeff_ctr;
   int  pos;
-
+  
 
   // Function pointers
   int     (*Mode_Decision_for_4x4IntraBlocks)   (Macroblock *currMB, int  b8,  int  b4,  double  lambda,  double*  min_cost);
@@ -652,6 +656,7 @@ typedef struct slice
   Boolean (*slice_too_big)                      (int bits_slice); //!< for use of callback functions
   void    (*SetMotionVectorsMB)                 (Macroblock *currMB, struct pic_motion_params *motion);
   void    (*encode_one_macroblock)              (Macroblock *currMB);
+  void    (*encode_one_macroblockRD)            (Macroblock *currMB);
   void    (*set_stored_mb_parameters)           (Macroblock *currMB);
   void    (*set_ref_and_motion_vectors)         (Macroblock *currMB, struct pic_motion_params *motion, Info8x8 *part, int block);
   int     (*distI16x16)                         (Macroblock *currMB, imgpel **img_org, imgpel **pred_img, double min_cost);
